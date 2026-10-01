@@ -11,7 +11,7 @@
     name: "Fresher's",
     tagline: "Fresh in 20.",
     intro: "Taaza fruit ka juice, sealed plastic glass mein. Seedha hospital aur gym tak, sirf 20 minute mein.",
-    logo: ""            // apna logo lagana ho to file "assets/logo.png" folder mein rakho aur yahan likho: "assets/logo.png"
+    logo: "logo_circle_5cm.jpg"            // apna logo lagana ho to file "assets/logo.png" folder mein rakho aur yahan likho: "assets/logo.png"
   },
 
   /* ---------- Contact ---------- */
