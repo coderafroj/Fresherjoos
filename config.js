@@ -11,7 +11,7 @@
     name: "Fresher's",
     tagline: "Fresh in 20.",
     intro: "Taaza fruit ka juice, sealed plastic glass mein. Seedha hospital aur gym tak, sirf 20 minute mein.",
-    logo: "logo_circle_5cm.jpg"            // apna logo lagana ho to file "assets/logo.png" folder mein rakho aur yahan likho: "assets/logo.png"
+    logo: "logo.jpg"            // apna logo lagana ho to file "assets/logo.png" folder mein rakho aur yahan likho: "assets/logo.png"
   },
 
   /* ---------- Contact ---------- */
@@ -114,8 +114,8 @@
   places: {
     hospital: {
       title: "Hospital ke liye",
-      text: "Marij aur unke saath rehne waalon ke liye halka, taaza aur sealed juice. Seedha ward tak.",
-      note: "Marij ki diet ke liye pehle doctor se poochh lein.",
+      text: "Patient aur unke saath rehne waalon ke liye halka, taaza aur sealed juice. Seedha ward tak.",
+      note: "Patient ki diet ke liye pehle doctor se poochh lein.",
       plans: [
         { name: "Hospital Daily", detail: "Roz 1 glass (350 ml), 7 din", price: 399 }
       ]
