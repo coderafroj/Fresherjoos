@@ -1,11 +1,6 @@
-/* Juice ka asli jaisa glass (SVG). Alag file taaki code saaf rahe. */
-(function(){
-"use strict";
-var C = window.FRESHERS;
-var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-var $ = function(s,r){return (r||document).querySelector(s)};
-var esc = function(s){return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})};
-/* ---------- glass (realistic) ---------- */
+/* Juice ka asli jaisa glass (SVG string). React ka <Glass/> component isse use karta hai. */
+import C from "../../shared/config.js";
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 var gid = 0;
 function rng(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 function wl(y){return 38+(y-150)*0.10625}
@@ -96,26 +91,5 @@ function glass(){
   '<g transform="translate(238 128) rotate(16)"><use href="#slice" x="-34" y="-34" width="68" height="68" style="color:var(--j)"/></g>'+
   '</svg>';
 }
-function setFill(svg, px, instant){
-  var j = $(".juice", svg);
-  if(instant || reduce){j.style.transition="none";}
-  j.style.setProperty("--fill", px+"px");
-  if(instant){void j.getBoundingClientRect(); j.style.transition="";}
-}
-function tilt(zone, svg){
-  if(reduce || !window.matchMedia("(pointer:fine)").matches) return;
-  var raf=0, nx=0, ny=0;
-  function apply(){raf=0; svg.style.setProperty("--ry",(nx*16).toFixed(2)); svg.style.setProperty("--rx",(-ny*8).toFixed(2));}
-  zone.addEventListener("pointermove",function(e){
-    var r=svg.getBoundingClientRect();
-    nx=Math.max(-1,Math.min(1,(e.clientX-(r.left+r.width/2))/(window.innerWidth/2)));
-    ny=Math.max(-1,Math.min(1,(e.clientY-(r.top+r.height/2))/(window.innerHeight/2)));
-    if(!raf) raf=requestAnimationFrame(apply);
-  },{passive:true});
-  zone.addEventListener("pointerleave",function(){nx=0;ny=0;if(!raf) raf=requestAnimationFrame(apply);});
-}
-function sloshIt(svg){svg.classList.remove("slosh"); void svg.getBoundingClientRect(); svg.classList.add("slosh"); setTimeout(function(){svg.classList.remove("slosh")},1600);}
 
-
-window.FRGlass = { glass: glass, setFill: setFill, tilt: tilt, slosh: sloshIt };
-})();
+export { glass as glassSVG };

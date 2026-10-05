@@ -4,7 +4,7 @@
    index.html ko chhune ki zaroorat nahi. Save karo, GitHub pe push karo, Vercel khud update kar dega.
    (Jahan "SAMPLE" likha hai wahan apni asli jaankari daalo.)
    ===================================================================== */
-(typeof window !== "undefined" ? window : globalThis).FRESHERS = {
+const config = {
 
   /* ---------- Brand ---------- */
   brand: {
@@ -41,6 +41,12 @@
     close: "22:00",
     enforce: false     // true = band hone par order nahi lenge. false = sirf "Abhi khule hain / band hain" dikhayega
   },
+
+  /* ---------- Location (GPS) ----------
+     goodAccuracyM : itni meter tak sahi location mil jaye to GPS band kar dete hain
+     maxWaitMs     : sahi GPS ke liye zyada se zyada kitna ruk-na hai
+     ipFallback    : GPS na mile/allow na ho to bhi internet se shehar ka andaaza dikhana (header mein "approx")   */
+  geo: { goodAccuracyM: 25, maxWaitMs: 15000, ipFallback: true, refreshMinutes: 10 },
 
   /* ---------- Order settings ---------- */
   orders: {
@@ -131,4 +137,4 @@
   marquee: ["100% taaza fruit", "Sealed plastic glass", "20 minute delivery", "Hospital aur Gym ke liye", "Zero adulteration"]
 };
 
-if (typeof module !== "undefined" && module.exports) { module.exports = (typeof window !== "undefined" ? window : globalThis).FRESHERS; }
+export default config;
