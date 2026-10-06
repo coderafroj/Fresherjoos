@@ -200,6 +200,7 @@ function FormView({ onDone, onFail }) {
             {busy ? <><span className="sp" /> {busy}</> : `Order bhejo · ${rupee(tot.total)}`}
           </button>
           <a className="btn" href={telHref}>Call karke order do</a>
+          <button className="linkbtn" type="button" onClick={() => { try { ["freshers-info", "fr-last", "fr-loc-v4"].forEach((k) => localStorage.removeItem(k)); sessionStorage.clear(); } catch { /* */ } toast("Aapki saved jaankari is phone se hata di"); }}>Meri saved jaankari hatao</button>
         </div>
       </form>
     </>

@@ -6,7 +6,19 @@ import { cart, juiceById, minPrice, sizesOf } from "../lib/cart.js";
 import { ui, toast } from "../lib/ui.js";
 import { useStore } from "../lib/store.js";
 import { useInView } from "../lib/hooks.js";
-import { onColor, rupee } from "../lib/utils.js";
+import { onColor, prefersReducedMotion, rupee } from "../lib/utils.js";
+
+/** juice ka ek gola "Order" button tak ud kar jata hai */
+function flyToCart(from, color) {
+  const to = document.querySelector(".cartbtn");
+  if (!from || !to || prefersReducedMotion()) return;
+  const a = from.getBoundingClientRect(), b = to.getBoundingClientRect();
+  const dot = document.createElement("i");
+  Object.assign(dot.style, { position: "fixed", zIndex: 90, left: a.left + a.width / 2 - 14 + "px", top: a.top + a.height / 2 - 14 + "px", width: "28px", height: "28px", borderRadius: "50%", background: color, boxShadow: "0 0 0 4px #fff8, 0 8px 20px #0004", pointerEvents: "none" });
+  document.body.appendChild(dot);
+  const dx = b.left + b.width / 2 - (a.left + a.width / 2), dy = b.top + b.height / 2 - (a.top + a.height / 2);
+  dot.animate([{ transform: "translate(0,0) scale(1)", opacity: 1 }, { transform: `translate(${dx * 0.5}px,${dy * 0.5 - 90}px) scale(1.1)`, opacity: 1, offset: 0.55 }, { transform: `translate(${dx}px,${dy}px) scale(.3)`, opacity: 0.2 }], { duration: 650, easing: "cubic-bezier(.4,.1,.3,1)" }).finished.finally(() => dot.remove());
+}
 
 const defaultSize = (j) => (sizesOf(j)[1] ?? sizesOf(j)[0])?.id;
 
@@ -48,7 +60,8 @@ export default function Menu() {
   const select = (id) => { setCur(id); setQty(1); setSip((n) => n + 1); };
   useEffect(() => { if (picked) select(picked); }, [pickN]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const add = () => {
+  const add = (e) => {
+    flyToCart(e.currentTarget, j.color === "#FFC62E" || j.color === "#D9E24B" ? "#0E3B2A" : j.color);
     cart.dispatch({ type: "add", j: cur, s: sz, q: qty });
     toast(`${j.name} order mein jud gaya`);
     setQty(1);

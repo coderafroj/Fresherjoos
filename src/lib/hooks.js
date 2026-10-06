@@ -116,3 +116,9 @@ export function useInViewId(id, opts) {
   const v = useInView(ref, opts);
   return el ? v : true;
 }
+
+/** net chalu hai ya nahi */
+export const useOnline = () => useSyncExternalStore(
+  (cb) => { addEventListener("online", cb); addEventListener("offline", cb); return () => { removeEventListener("online", cb); removeEventListener("offline", cb); }; },
+  () => navigator.onLine, () => true
+);

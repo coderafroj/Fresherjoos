@@ -1,52 +1,63 @@
 import C from "../../shared/config.js";
-import { zoneFor, haversine } from "../../shared/format.js";
 import { postJSON, getJSON } from "./api.js";
+import { FixFilter, haversineM, decideInside } from "./geoMath.js";
 import { safeJSON, safeSet } from "./utils.js";
 
-/*  LOCATION ENGINE
-    Kaam: user kahin se bhi site khole, uski location + area + pincode nikal ke header mein dikhana.
-    Tareeka (3 darje):
-      1) GPS (jaldi wala, network se)  ->  2 se 7 second mein pehla andaaza, header turant bhar jata hai
-      2) GPS (high accuracy)           ->  piche chalta rehta hai, aur sahi hone par location sudhar deta hai
-      3) IP (internet) se shehar       ->  GPS na mile ya allow na ho tab bhi shehar ka naam dikhta hai ("approx")
-    Sab kuch background mein hota hai, user ko kuch dabana nahi padta (permission milne ke baad).        */
+/*  LOCATION ENGINE — user kahin se bhi site khole, uski location + area + pincode nikalna, sab background mein.
 
-const KEY = "fr-loc-v3";
-const GEO = { goodAccuracyM: 25, maxWaitMs: 15000, ipFallback: true, refreshMinutes: 10, ...(C.geo || {}) };
+    Darje (ek ke fail hone par agla):
+      1) Jaldi wala GPS (network/wifi)   2-7 sec  -> header turant bhar jata hai
+      2) Sahi GPS (high accuracy)        piche chalta hai, har nayi reading Kalman filter mein jaati hai
+      3) Internet (IP) se shehar         GPS band/allow nahi ho tab bhi "Bareilly (approx)"
+
+    Sahi karne ke tareeke:
+      - FixFilter: galat reading (achanak 5 km uchhal / bahut kamzor) hata deta hai
+      - Kalman filter: kai readings ko milakar ek pakka point + accuracy banata hai
+      - Hysteresis: area ki seema par baar-baar andar/bahar flicker nahi
+      - Reverse geocode sirf tab jab 60 m se zyada hile (server ko aaram, cache ka fayda)
+      - Privacy: phone mein sirf ~100 m tak ki rounded location rakhte hain (poori sahi nahi)         */
+
+const KEY = "fr-loc-v4";
+const GEO = { goodAccuracyM: 25, maxWaitMs: 15000, ipFallback: true, refreshMinutes: 10, maxJumpMps: 60, hysteresisM: 120, ...(C.geo || {}) };
 const AREA = C.area || {};
-const zonesOn = AREA.enabled !== false && (AREA.zones || []).length > 0;
+const zones = AREA.zones || [];
+const zonesOn = AREA.enabled !== false && zones.length > 0;
 const FRESH_MS = 30 * 60_000;
+const round3 = (n) => Math.round(n * 1000) / 1000;
 
-const ERR_TEXT = {
+export const ERR_TEXT = {
+  0: "Is browser mein location available nahi hai",
   1: "Location ki permission band hai",
   2: "Phone ki Location (GPS) service band hai ya signal nahi hai",
-  3: "GPS ne jawab dene mein bahut der lagayi",
-  0: "Is browser mein location available nahi hai"
+  3: "GPS ne jawab dene mein bahut der lagayi"
 };
 
-const initial = { status: "idle", fix: null, place: null, ip: null, zone: null, perm: "unknown", error: null, updatedAt: 0, refining: false };
+const initial = { status: "idle", fix: null, place: null, ip: null, zone: null, perm: "unknown", error: null, updatedAt: 0, refining: false, samples: 0, rejected: 0 };
 
 class LocationEngine {
   #s = { ...initial };
   #subs = new Set();
-  #run = 0;                // naya locate() chalte hi purane ko ruk jana chahiye
+  #run = 0;                              // naya locate() chalte hi purana ruk jata hai
   #watch = null;
   #stopTimer = 0;
   #geoAbort = null;
-  #geoFrom = null;         // jahan ka address nikala tha
+  #geoFrom = null;
   #inited = false;
+  #filter = new FixFilter({ maxJumpMps: GEO.maxJumpMps });
+  #wasInside = false;
 
   subscribe = (fn) => { this.#subs.add(fn); return () => this.#subs.delete(fn); };
   getSnapshot = () => this.#s;
-
   #emit(patch) { this.#s = { ...this.#s, ...patch }; this.#subs.forEach((f) => f()); }
 
   /** page khulte hi ek baar */
   async init() {
-    if (this.#inited) return; this.#inited = true;
+    if (this.#inited) return;
+    this.#inited = true;
     const saved = safeJSON(KEY, null);
     if (saved?.fix && Date.now() - saved.t < FRESH_MS) {
-      this.#emit({ status: "ready", fix: saved.fix, place: saved.place || null, zone: this.#zone(saved.fix), updatedAt: saved.t });
+      const fix = { ...saved.fix, src: "cache" };
+      this.#emit({ status: "ready", fix, place: saved.place || null, zone: this.#zone(fix), updatedAt: saved.t });
     }
     let perm = "unknown";
     try {
@@ -55,43 +66,57 @@ class LocationEngine {
         perm = p.state;
         p.addEventListener("change", () => {
           this.#emit({ perm: p.state });
-          if (p.state === "granted") this.locate();
+          if (p.state === "granted") this.locate({ force: true });
           if (p.state === "denied") this.#denied(1);
         });
       }
-    } catch { /* kuch browsers (iOS) mein nahi hota */ }
+    } catch { /* iOS Safari mein Permissions API nahi hoti */ }
     this.#emit({ perm });
 
     if (perm === "denied") this.#denied(1);
     else if (perm === "granted") this.locate();
-    else if (!this.#s.fix) this.#ipFallback();      // permission abhi nahi di: tab bhi shehar dikha do
+    else if (!this.#s.fix) this.#ipFallback();       // abhi permission nahi: tab bhi shehar dikha do
 
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible" && this.#s.perm === "granted" &&
           Date.now() - this.#s.updatedAt > GEO.refreshMinutes * 60_000) this.locate();
     });
-    addEventListener("online", () => { if (!this.#s.place && this.#s.fix) this.#reverse(this.#s.fix); });
+    addEventListener("online", () => { if (this.#s.fix && !this.#s.place) this.#reverse(this.#s.fix); if (!this.#s.fix && !this.#s.ip) this.#ipFallback(); });
   }
 
-  #zone(fix) { return zonesOn ? zoneFor(C, fix.lat, fix.lng, fix.acc) : null; }
-
-  #getPos(opts) {
-    return new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, opts));
+  /* ---------- area ke andar/bahar (hysteresis ke saath) ---------- */
+  #zone(fix) {
+    if (!zonesOn) return null;
+    let best = null;
+    for (const z of zones) {
+      const distKm = haversineM(fix, z) / 1000;
+      if (!best || distKm < best.dist) best = { zone: z, dist: distKm };
+    }
+    const d = decideInside({ distKm: best.dist, radiusKm: best.zone.radiusKm, accM: fix.acc ?? 0, wasInside: this.#wasInside, hysteresisM: GEO.hysteresisM });
+    this.#wasInside = d.inside;
+    return { ...best, inside: d.inside, edge: d.edge };
   }
 
-  /** Location lo. Pehle jaldi wali, phir sahi wali. Return: aakhri state. */
+  #getPos(opts) { return new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, opts)); }
+
+  /** Location lo: pehle jaldi wali, phir sahi wali. Return: aakhri state. */
   async locate({ force = false } = {}) {
     const run = ++this.#run;
     this.#stopWatch();
-    if (!("geolocation" in navigator)) { this.#emit({ error: { code: 0, text: ERR_TEXT[0] }, status: this.#s.fix ? "ready" : "error" }); this.#ipFallback(); return this.#s; }
-    this.#emit({ status: this.#s.fix ? "ready" : "locating", refining: true, error: null });
-    if (!this.#s.fix) this.#ipFallback();                  // GPS ke intezaar mein bhi shehar turant dikha do
+    this.#filter.reset();
+    if (!("geolocation" in navigator)) {
+      this.#emit({ error: { code: 0, text: ERR_TEXT[0] }, status: this.#s.fix ? "ready" : "error" });
+      this.#ipFallback();
+      return this.#s;
+    }
+    this.#emit({ status: this.#s.fix ? "ready" : "locating", refining: true, error: null, samples: 0, rejected: 0 });
+    if (!this.#s.fix) this.#ipFallback();            // GPS ke intezaar mein bhi shehar turant dikha do
 
     // 1) jaldi wala
     try {
       const pos = await this.#getPos({ enableHighAccuracy: false, timeout: 7000, maximumAge: force ? 0 : 120_000 });
       if (run !== this.#run) return this.#s;
-      this.#apply(pos.coords, "net");
+      this.#apply(pos, "net");
     } catch (e) {
       if (run !== this.#run) return this.#s;
       if (e?.code === 1) { this.#denied(1); return this.#s; }
@@ -102,7 +127,7 @@ class LocationEngine {
     if (run !== this.#run) return this.#s;
     this.#emit({ refining: false });
 
-    if (!this.#s.fix) {                                    // dono fail
+    if (!this.#s.fix) {                              // dono fail
       this.#emit({ status: "error", error: { code: 2, text: ERR_TEXT[2] } });
       this.#ipFallback();
     }
@@ -111,21 +136,21 @@ class LocationEngine {
 
   #refine(run) {
     return new Promise((resolve) => {
-      let best = this.#s.fix?.acc ?? Infinity, done = false;
+      let done = false;
       const finish = () => { if (done) return; done = true; this.#stopWatch(); resolve(); };
       this.#watch = navigator.geolocation.watchPosition(
         (pos) => {
           if (run !== this.#run) return finish();
-          const acc = pos.coords.accuracy;
-          if (acc < best * 0.85 || !this.#s.fix) { best = acc; this.#apply(pos.coords, "gps"); }
-          if (acc <= GEO.goodAccuracyM) finish();
+          this.#apply(pos, "gps");
+          const s = this.#s;
+          if (s.fix && s.fix.acc <= GEO.goodAccuracyM && s.samples >= 3) finish();   // kai achhi readings milkar pakka
         },
         (err) => {
           if (run !== this.#run) return finish();
           if (err.code === 1) { this.#denied(1); finish(); }
           else if (!this.#s.fix) {
             this.#emit({ error: { code: err.code, text: ERR_TEXT[err.code] || ERR_TEXT[2] } });
-            if (err.code === 2) finish();                  // GPS hai hi nahi: 15 second mat ruko
+            if (err.code === 2) finish();            // GPS hai hi nahi: 15 second mat ruko
           }
         },
         { enableHighAccuracy: true, maximumAge: 0, timeout: GEO.maxWaitMs }
@@ -136,33 +161,43 @@ class LocationEngine {
 
   #stopWatch() {
     if (this.#watch != null) navigator.geolocation.clearWatch(this.#watch);
-    this.#watch = null; clearTimeout(this.#stopTimer);
+    this.#watch = null;
+    clearTimeout(this.#stopTimer);
   }
 
-  #apply(c, src) {
-    const fix = { lat: c.latitude, lng: c.longitude, acc: c.accuracy ?? null, src, t: Date.now() };
-    this.#emit({ status: "ready", fix, zone: this.#zone(fix), error: null, updatedAt: fix.t });
+  /** ek reading ko filter se guzaro, theek ho to location update karo */
+  #apply(pos, src) {
+    const c = pos.coords;
+    const r = this.#filter.push({ lat: c.latitude, lng: c.longitude, acc: c.accuracy, t: pos.timestamp || Date.now(), speed: c.speed });
+    if (r.rejected) { this.#emit({ rejected: this.#filter.rejected }); return; }
+    const st = r.state;
+    const fix = { lat: st.lat, lng: st.lng, acc: st.acc, src, t: Date.now() };
+    this.#emit({ status: "ready", fix, zone: this.#zone(fix), error: null, updatedAt: fix.t, samples: st.n });
     this.#persist();
-    if (!this.#geoFrom || haversine(this.#geoFrom, fix) * 1000 > 60 || !this.#s.place) this.#reverse(fix);
+    if (!this.#geoFrom || haversineM(this.#geoFrom, fix) > 60 || !this.#s.place) this.#reverse(fix);
   }
 
-  #persist() { safeSet(KEY, { fix: this.#s.fix, place: this.#s.place, t: this.#s.updatedAt }); }
+  #persist() {
+    const f = this.#s.fix;
+    if (f) safeSet(KEY, { fix: { lat: round3(f.lat), lng: round3(f.lng), acc: Math.max(f.acc, 120) }, place: this.#s.place, t: this.#s.updatedAt });
+  }
 
   /** lat/lng -> area, shehar, pincode (server ke through) */
   async #reverse(fix) {
     this.#geoAbort?.abort();
     const ctrl = (this.#geoAbort = new AbortController());
     this.#geoFrom = { lat: fix.lat, lng: fix.lng };
-    let r = await postJSON("/api/geocode", { lat: fix.lat, lng: fix.lng }, { signal: ctrl.signal, timeout: 8000 });
+    const call = () => postJSON("/api/geocode", { lat: fix.lat, lng: fix.lng }, { signal: ctrl.signal, timeout: 8000 });
+    let r = await call();
     if (r.aborted) return;
-    if (!r.ok || !r.data?.place) {                         // ek baar dobara
+    if (!r.data?.place) {
       await new Promise((ok) => setTimeout(ok, 1500));
       if (ctrl.signal.aborted) return;
-      r = await postJSON("/api/geocode", { lat: fix.lat, lng: fix.lng }, { signal: ctrl.signal, timeout: 8000 });
+      r = await call();
       if (r.aborted) return;
     }
     if (r.data?.place) { this.#emit({ place: r.data.place }); this.#persist(); }
-    else this.#geoFrom = null;
+    else this.#geoFrom = null;                       // agli reading par dobara koshish
   }
 
   async #ipFallback() {
@@ -172,25 +207,29 @@ class LocationEngine {
   }
 
   #denied(code) {
-    this.#run++; this.#stopWatch();
+    this.#run++;
+    this.#stopWatch();
     this.#emit({ status: "denied", refining: false, error: { code, text: ERR_TEXT[code] } });
     this.#ipFallback();
   }
 
   /** order bhejte waqt: sahi location aane tak (zyada se zyada ms) ruko */
   async waitForFix(ms = 9000) {
-    if (this.#s.fix) return this.#s.fix;
-    if (!this.#s.refining) this.locate();
+    if (this.#s.fix && this.#s.fix.src !== "cache") return this.#s.fix;
+    if (!this.#s.refining) this.locate({ force: true });
     return new Promise((resolve) => {
       const t = setTimeout(() => { off(); resolve(this.#s.fix); }, ms);
-      const off = this.subscribe(() => { if (this.#s.fix || this.#s.status === "denied") { clearTimeout(t); off(); resolve(this.#s.fix); } });
+      const off = this.subscribe(() => {
+        const s = this.#s;
+        if ((s.fix && s.fix.src !== "cache") || s.status === "denied") { clearTimeout(t); off(); resolve(s.fix); }
+      });
     });
   }
 }
 
 export const location = new LocationEngine();
 
-/** header mein dikhane ke liye chhota text: "Shakti Nagar, Bareilly · 243006" */
+/** header ke liye chhota text: "Shakti Nagar, Bareilly · 243006" */
 export function placeLabel(place) {
   if (!place) return "";
   const parts = [place.area, place.city].filter(Boolean);

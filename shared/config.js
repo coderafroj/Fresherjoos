@@ -9,8 +9,8 @@ const config = {
   /* ---------- Brand ---------- */
   brand: {
     name: "Fresher's",
-    hook: "Juice nahi. Taazgi ki delivery.",          // sabse upar ki badi line
-    tagline: "Fresh in 20.",
+    hook: "Juice nahi. Taazgi ki delivery.",          // headline ke upar ki chhoti line
+    tagline: "Freshness in 20 min",                  // BADI headline (do line mein ban jati hai: "Freshness" / "in 20 min.")
     intro: "Taaza fruit ka juice, sealed plastic glass mein. Seedha hospital aur gym tak, sirf 20 minute mein.",
     logo: "assets/logo.webp",
     siteUrl: "https://freserjoos.vercel.app"           // apni asli site ka link (share aur preview ke liye)
@@ -46,7 +46,17 @@ const config = {
      goodAccuracyM : itni meter tak sahi location mil jaye to GPS band kar dete hain
      maxWaitMs     : sahi GPS ke liye zyada se zyada kitna ruk-na hai
      ipFallback    : GPS na mile/allow na ho to bhi internet se shehar ka andaaza dikhana (header mein "approx")   */
-  geo: { goodAccuracyM: 25, maxWaitMs: 15000, ipFallback: true, refreshMinutes: 10 },
+  geo: {
+    goodAccuracyM: 25,      // itni meter tak sahi ho jaye to GPS band
+    maxWaitMs: 15000,       // sahi GPS ke liye zyada se zyada itna ruko
+    ipFallback: true,       // GPS na mile to internet se shehar dikhao
+    refreshMinutes: 10,     // itne minute baad (tab wapas aane par) location chupke se taaza karo
+    maxJumpMps: 60,         // itni tez (m/s) "uchhal" wali reading galat maani jayegi
+    hysteresisM: 120        // area ki seema par baar-baar andar/bahar na dikhe, isliye itna buffer
+  },
+
+  /* ---------- Pahunchne ka andaaza (customer ko "~12 min" dikhane ke liye) ---------- */
+  eta: { prepMin: 8, speedKmh: 18 },
 
   /* ---------- Order settings ---------- */
   orders: {

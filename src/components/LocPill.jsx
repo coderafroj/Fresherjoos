@@ -3,7 +3,7 @@ import { useLocation, useInViewId } from "../lib/hooks.js";
 import { location, placeLabel } from "../lib/location.js";
 import { areaState } from "../lib/area.js";
 import { km, cx, safeJSON } from "../lib/utils.js";
-import { toast, ui } from "../lib/ui.js";
+import { openLocSheet, ui } from "../lib/ui.js";
 import { useStore } from "../lib/store.js";
 import { PinIcon } from "./Icons.jsx";
 
@@ -13,8 +13,8 @@ function view(L) {
   if (L.fix) {
     const label = placeLabel(L.place);
     const dist = L.zone?.zone ? ` · ${km(L.zone.dist)}` : "";
-    const text = label ? label + dist : L.zone?.zone ? `Aapki location mil gayi${dist}` : "Aapki location mil gayi";
-    return { cls: st === "out" ? "bad" : "ok", text, live: L.refining, title: [L.place?.line, L.fix.acc ? `±${Math.round(L.fix.acc)} m` : ""].filter(Boolean).join(" · ") };
+    const text = label || (L.zone?.zone ? "Aapki location mil gayi" : "Aapki location mil gayi");
+    return { cls: st === "out" ? "bad" : "ok", text, dist, live: L.refining, title: [L.place?.line, L.fix.acc ? `±${Math.round(L.fix.acc)} m` : ""].filter(Boolean).join(" · ") };
   }
   if (L.ip?.city) {
     const tail = L.status === "locating" ? " · sahi area dhoondh rahe…" : L.status === "denied" ? " · GPS allow karo" : "";
@@ -29,15 +29,10 @@ function view(L) {
 export function LocPill({ variant = "header" }) {
   const L = useLocation();
   const v = view(L);
-  const onClick = () => {
-    if (L.status === "denied" || L.perm === "denied") {
-      toast("Browser/phone settings mein is site ke liye Location → Allow karo, phir yahan dabao", 4800);
-      location.locate({ force: true });
-    } else { location.locate({ force: true }); if (L.fix) toast("Location update ho rahi hai…", 1600); }
-  };
+  const onClick = () => { openLocSheet(); if (!L.fix && L.status !== "locating" && L.status !== "denied") location.locate({ force: true }); };
   return (
     <button type="button" className={cx("pill", "hdrLoc", v.cls, v.live && "live", variant === "float" && "mini")} onClick={onClick} title={v.title} aria-live="polite">
-      <PinIcon /><span className="txt">{v.text}</span>
+      <PinIcon /><span className="txt">{v.text}</span>{v.dist && <span className="dst">{v.dist}</span>}
     </button>
   );
 }

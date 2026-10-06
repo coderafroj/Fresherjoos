@@ -1,9 +1,12 @@
 import { memo, useRef } from "react";
 import C from "../../shared/config.js";
 import { Slice } from "./Icons.jsx";
+import Radar from "./Radar.jsx";
 import { useInView, useLocation } from "../lib/hooks.js";
 import { location, placeLabel } from "../lib/location.js";
 import { areaName, areaOn, areaState, mainZone, outMessage, zones } from "../lib/area.js";
+import { describe } from "../lib/locInfo.js";
+import { openLocSheet } from "../lib/ui.js";
 import { juiceById } from "../lib/cart.js";
 import { openSheet, pickJuice, toast } from "../lib/ui.js";
 import { cart } from "../lib/cart.js";
@@ -71,50 +74,24 @@ const Place = memo(function Place({ k }) {
 });
 export const Places = () => (<section className="places" id="places"><Place k="hospital" /><Place k="gym" /></section>);
 
-/* ---------- Delivery area + naksha ---------- */
-function Radar({ L }) {
-  const z = L.zone?.zone || mainZone;
-  if (!z) return null;
-  const R = 170, k = R / z.radiusKm;
-  let you = null;
-  if (L.fix) {
-    const lat0 = (z.lat * Math.PI) / 180;
-    let px = (L.fix.lng - z.lng) * Math.cos(lat0) * 111.32 * k, py = -(L.fix.lat - z.lat) * 110.57 * k;
-    const d = Math.hypot(px, py), cap = R * 1.22;
-    if (d > cap) { px *= cap / d; py *= cap / d; }
-    const inside = L.zone?.inside, col = inside ? "#17703d" : "#B3123A", ar = Math.max(9, Math.min(60, ((L.fix.acc || 0) / 1000) * k));
-    you = (
-      <g className="you" style={{ transform: `translate(${px.toFixed(1)}px,${py.toFixed(1)}px)` }}>
-        <circle r={ar} fill={col} fillOpacity=".18" /><circle r="9" fill={col} stroke="#fff" strokeWidth="3" /><text y="-17" textAnchor="middle">Aap</text>
-      </g>
-    );
-  }
-  const name = z.name.length > 26 ? z.name.slice(0, 24) + "…" : z.name;
-  return (
-    <svg viewBox="-215 -215 430 430" aria-hidden="true">
-      <circle className="zone" r={R} /><circle className="ring" r={R / 2} /><circle className="pulse" r={R} />
-      <text x="0" y={-R - 8} textAnchor="middle">{z.radiusKm} km</text><text x="0" y={-R / 2 - 6} textAnchor="middle">{+(z.radiusKm / 2).toFixed(1)} km</text>
-      <circle r="17" fill="#0E3B2A" /><path d="M-8 0H8M0 -8V8" stroke="#fff" strokeWidth="4" strokeLinecap="round" />
-      <text y="36" textAnchor="middle">{name}</text>{you}
-    </svg>
-  );
-}
-
+/* ---------- Delivery area ---------- */
 function AreaCard({ L }) {
   const st = areaState(L), z = L.zone?.zone || mainZone, line = placeLabel(L.place);
   const items = useStore(cart, (s) => s.items);
   const act = (e) => { e.preventDefault(); location.locate({ force: true }); };
   if (L.fix) {
+    const info = describe(L);
     const low = L.fix.acc > 150 ? <p className="muted">GPS thoda kam sahi hai (±{Math.round(L.fix.acc)} m). Pata zaroor likhna.</p> : null;
     return (
       <div className="acard">
         <b className="big">{st === "out" ? `Aap abhi area ke bahar ho (${km(L.zone.dist)}).` : L.zone?.zone ? `Haan! Aap ${km(L.zone.dist)} door ho.` : "Location mil gayi."}</b>
         {line && <p className="here"><b>Aapka area:</b> {line}</p>}
-        <p>{st === "out" ? outMessage(L) + " Aur jagah jaldi jodenge." : L.zone?.zone ? `Delivery available hai. Aap ${L.zone.zone.name} ke ${L.zone.zone.radiusKm} km ke andar ho.` : ""}{L.fix.acc ? ` Sahi hone ka andaaza ±${Math.round(L.fix.acc)} m.` : ""}</p>
+        <p>{st === "out" ? outMessage(L) + " Aur jagah jaldi jodenge." : L.zone?.zone ? `Delivery available hai. Aap ${L.zone.zone.name} ke ${L.zone.zone.radiusKm} km ke andar ho.` : ""}{info.etaMin != null && info.inside ? ` Juice lagbhag ${info.etaMin} min mein pahunchega.` : ""}{info.dirText ? ` (${info.dirText} disha mein)` : ""} Sahi hone ka andaaza {info.accText} · {info.conf.text}.</p>
         {low}
         <div className="row">
           {st === "out" ? <a className="btn solid" href={`tel:+91${C.contact.phone}`}>Call karke poochho</a> : <button className="btn solid" type="button" onClick={() => (items.length ? openSheet() : scrollToId("menu"))}>Juice order karo</button>}
           <button className="btn" type="button" onClick={act}>Dobara check karo</button>
+          <button className="btn" type="button" onClick={openLocSheet}>Poori detail</button>
         </div>
       </div>
     );
@@ -189,7 +166,7 @@ export function OrderCta() {
         <a className="btn" href={`tel:+91${C.contact.phone}`}>Seedha call karo</a>
       </div>
       <div className="mega" aria-hidden="true">{C.brand.name}</div>
-      <p className="fine">© {new Date().getFullYear()} {C.brand.name}. Sealed glass mein taaza juice. · <a href={`https://wa.me/${C.contact.whatsapp}?text=${encodeURIComponent("Namaste " + C.brand.name + "! Mujhe ek sawal poochhna hai.")}`} target="_blank" rel="noopener noreferrer">Sawal hai? WhatsApp pe poochho</a> · Address data © OpenStreetMap contributors</p>
+      <p className="fine">© {new Date().getFullYear()} {C.brand.name}. Sealed glass mein taaza juice. · <a href={`https://wa.me/${C.contact.whatsapp}?text=${encodeURIComponent("Namaste " + C.brand.name + "! Mujhe ek sawal poochhna hai.")}`} target="_blank" rel="noopener noreferrer">Sawal hai? WhatsApp pe poochho</a> · Address data © OpenStreetMap contributors · Search by LocationIQ.com</p>
     </section>
   );
 }

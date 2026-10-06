@@ -1,74 +1,80 @@
-FRESHER'S — REACT APP (Vite + React 19)  |  SETUP (Hinglish)
-============================================================
+FRESHER'S — REACT APP (Vite + React 19)  |  "Freshness in 20 min"
+===================================================================
 
-FOLDER
-  shared/config.js      naam, daam, ml, phone, delivery AREA (5 km), khulne ka time, FAQ — SAB KUCH YAHIN BADLO (public file)
-  api/_private.js       COUPONS yahan (server-only, koi nahi dekh sakta)
-  api/order.js          order aate hi Telegram pe bhejta hai
-  api/geocode.js        location se area + PINCODE nikalta hai, aur GPS na mile to internet (IP) se shehar
-  api/coupon.js         coupon check (list browser ko kabhi nahi jaati)
-  api/telegram.js       Telegram ke Accept / Delivered buttons (optional)
-  src/                  React app (components, hooks, location engine, cart store)
-  public/               logo, app icons, link-preview image, service worker, manifest
+KYA HAI IS FOLDER MEIN
+  shared/config.js   naam, tagline, daam, ml, phone, delivery AREA (5 km), time, FAQ — SAB KUCH YAHIN BADLO
+  api/_private.js    COUPONS (server-only, koi nahi dekh sakta)
+  api/order.js       order -> Telegram (message + map pin + buttons)
+  api/geocode.js     location -> area + PINCODE, aur GPS na mile to internet se shehar
+  api/coupon.js, api/telegram.js, api/health.js
+  src/               React app: components, hooks, location engine, geoMath (Kalman filter)
+  public/            logo, icons, link-preview image, service worker, manifest
+  geo-test.mjs       location ke math ka test:  npm test
 
 1) GITHUB + VERCEL
-  - Is folder ki files apni repo mein daalo (purani files hata ke), phir push.
-  - Agar "rejected / fetch first" aaye aur online ka purana sab hatana ho:
-        git add -A && git commit -m "react v3"
-        git fetch origin && git push --force-with-lease origin main
-  - Vercel apne aap pehchan leta hai ki ye Vite project hai (Build: npm run build, Output: dist). Kuch badalna nahi.
+  Files repo mein daalo, phir:
+      git add -A && git commit -m "final"
+      git fetch origin && git push --force-with-lease origin main      (agar "rejected / fetch first" aaye aur online ka purana hatana ho)
+  Vercel khud pehchan leta hai (Vite). Kuch badalna nahi.
 
-2) TELEGRAM TOKEN KAHAN RAKHNA HAI  (sabse zaroori)
+2) TELEGRAM TOKEN KAHAN RAKHNA HAI (sabse zaroori)
   Token ko kabhi code / GitHub / chat mein mat likhna. Sirf yahan:
-    Vercel.com -> apna Project -> Settings -> Environment Variables -> "Add New"
-        Name:  TELEGRAM_BOT_TOKEN      Value: (BotFather ne jo token diya)
-        Name:  TELEGRAM_CHAT_ID        Value: (aapki chat id)
-    (Environments: Production, Preview, Development teeno tick rakho)
-    Phir  Deployments -> sabse upar wale deploy ke "..." -> Redeploy.   (env badalne ke baad Redeploy zaroori hai)
-  Chat ID kaise nikaalein:
-    a) Apne bot ko Telegram mein ek baar /start bhejo.
-    b) Browser mein kholo:  https://api.telegram.org/bot<TOKEN>/getUpdates   (<TOKEN> ki jagah apna token)
-    c) Jawab mein  "chat":{"id": 123456789 ...}  — wahi number CHAT ID hai. (Group ho to number minus (-) se shuru hota hai; bot ko group mein jodo.)
-  Token galti se kahin public ho gaya? BotFather -> /revoke se naya bana lo.
+    vercel.com -> apna Project -> Settings -> Environment Variables -> Add New
+        TELEGRAM_BOT_TOKEN = (BotFather ka token)
+        TELEGRAM_CHAT_ID   = (aapki chat id; group ki ho to minus (-) se shuru)
+    (Production + Preview + Development teeno tick) -> Save -> Deployments -> Redeploy.
+  Chat ID: bot ko /start bhejo, phir browser mein  https://api.telegram.org/bot<TOKEN>/getUpdates  kholo, "chat":{"id": ...} wahi hai.
+  Token leak ho jaye to BotFather -> /revoke.
 
 3) TELEGRAM BUTTONS (optional): Accept / Delivery pe nikla / Deliver ho gaya
-    a) Vercel env mein jodo:  TELEGRAM_WEBHOOK_SECRET = koi lamba random text (a1b2c3d4e5f6g7h8)  ->  Redeploy
-    b) Browser mein ek baar kholo (TOKEN, SITE, SECRET apne):
-       https://api.telegram.org/botTOKEN/setWebhook?url=https://SITE/api/telegram&secret_token=SECRET
+  Env mein TELEGRAM_WEBHOOK_SECRET = koi lamba random text -> Redeploy -> ek baar browser mein:
+  https://api.telegram.org/botTOKEN/setWebhook?url=https://SITE/api/telegram&secret_token=SECRET
 
-4) LOCATION KAISE KAAM KARTI HAI (sab background mein)
-    1. Site khulte hi: GPS ka jaldi wala andaaza (2-7 sec) -> header mein turant "Shakti Nagar, Bareilly · 243006 · 749 m" dikhta hai.
-    2. Piche GPS high-accuracy chalta rehta hai aur location ko aur sahi karta hai (aam taur pe 5-15 m).
-    3. GPS band / allow nahi / signal nahi? Tab bhi internet (IP) se shehar ka andaaza header mein dikhta hai ("Bareilly (approx)").
-    4. Order form mein Area aur Pincode apne aap bhar jaate hain (customer badal bhi sakta hai). Telegram message mein area + pincode + map pin aata hai.
-    5. Dusre shehar/area ka customer ho to uska area header mein dikhta hai, par order sirf delivery area ke andar se hota hai.
-  "Location nahi mili" kyun aata tha? High-accuracy GPS kai phones/computers par andar ya kamzor signal mein time-out ho jata tha. Ab pehle jaldi wala GPS, phir sahi wala, phir IP wala.
-  Phir bhi nahi mile to: phone ki Location (GPS) on karo, browser settings mein site ko Location -> Allow do, site HTTPS (Vercel pe apne aap).
+4) "LOCATION KEY" KYA HAI? (LOCATIONIQ_KEY) — SAMJHO
+  Teen alag cheezein hain, mix mat karna:
+   (a) GPS permission  = customer ke phone ka "Allow location" — isme koi key nahi, browser deta hai. Isse sirf latitude/longitude milte hain.
+   (b) Address / PINCODE nikalna (reverse geocoding) = latitude/longitude ko "Shakti Nagar, Bareilly, 243006" mein badalna. Ye kaam ek
+       map-service karti hai. Hum default mein free OpenStreetMap (Nominatim) use karte hain — iske liye KOI KEY NAHI chahiye.
+   (c) LOCATIONIQ_KEY = (b) ke liye ek optional "password" (API key) locationiq.com ka. Jab orders/visitors bahut badh jayein tab lagana.
+       Free plan: 5,000 requests/din, 2 per second (commercial use theek, credit dena hota hai — site ke neeche "Search by LocationIQ.com" likha hai).
+  KEY KAISE LAGAAYEIN (zaroorat padne par):
+    1. locationiq.com pe free account banao -> dashboard mein "Access Token / API key" milega.
+    2. Vercel -> Settings -> Environment Variables -> Name: LOCATIONIQ_KEY, Value: (wo key) -> Redeploy.
+    3. Bas. Code apne aap LocationIQ use karne lagta hai. Key kabhi GitHub/code mein nahi.
+  Abhi key ke bina bhi sab chalega.   Optional: GEOCODE_UA = "FreshersJuice/3.0 (aapka email)" (OpenStreetMap chahta hai ki pehchaan likhi ho).
 
-5) PINCODE / AREA KA SOURCE
-  Area aur pincode OpenStreetMap (Nominatim) se aate hain (credit site ke neeche likha hai). Free hai par "thoda use" ke liye (1 request/second ka niyam,
-  server isko sambhalta hai aur cache karta hai). Bahut zyada orders aane lagein to Vercel env mein LOCATIONIQ_KEY (locationiq.com ka free/paid key) jod do,
-  code apne aap use utha lega. Optional: GEOCODE_UA = "FreshersJuice/3.0 (aapka email)"  (Nominatim chahta hai ki pehchaan likhi ho).
-  OpenStreetMap kabhi kabhi pincode nahi deta — tab customer khud likh deta hai (ya khaali chhod sakta hai).
+5) LOCATION KA ALGORITHM (poora)  — src/lib/location.js + src/lib/geoMath.js
+  Tum site kholte ho -> background mein:
+   1. Pehle phone ki saved rounded location (agar 30 min se nayi) turant header mein.
+   2. Permission check (Permissions API). Mili hai to chupke se location; nahi mili to ek halka "Allow karo" card; mana kiya to IP wala shehar.
+   3. Jaldi wala GPS (network, 7 sec) -> header bhar jata hai.  Saath saath internet (IP) se shehar ka andaaza ("Bareilly (approx)").
+   4. Sahi GPS (high accuracy) piche chalta hai. Har reading FixFilter se guzarti hai:
+        - NaN / shehar-level (25 km+) reading reject
+        - 60 m/s se tez "uchhal" + kamzor accuracy = GPS glitch, reject
+        - pehle se pata hui jaankari se bahut kamzor reading = shor, ignore
+   5. Bachi hui readings Kalman filter mein: har reading ko uski accuracy ke hisaab se wazan milta hai, nateeja ek pakka point + sahi accuracy.
+        (Test: 25 m shor wali 40 readings ->  ~5 m galti, jabki akeli reading ~32 m.  `npm test` se dekho.)
+   6. Accuracy <= 25 m aur 3+ readings -> GPS band (battery bachti hai).
+   7. Reverse geocode (area, sadak, shehar, PINCODE) sirf tab jab 60 m se zyada hile; server 24 ghante cache karta hai.
+   8. Area check: haversine doori; GPS galti ka thoda fayda (<=200 m); seema par flicker rokne ke liye hysteresis (120 m); "seema par ho" flag.
+   9. Customer ko dikhta hai: header mein area+pincode+doori, location milte hi sundar card, tap par poori detail
+      (pincode, shehar, doori + disha, ~min mein juice, accuracy bar, source, naksha, map/copy). Order form mein area+pincode apne aap bhar jate hain.
+  10. Phone mein sirf ~100 m tak ki rounded location saved hoti hai (poori sahi nahi). "Meri saved jaankari hatao" button se sab mit jata hai.
+  "Location nahi mili" kyun aata tha: sirf high-accuracy GPS andar/kamzor signal mein time-out ho jata tha. Ab teen darje (network -> GPS -> IP).
+  Phir bhi na mile to: phone ki Location(GPS) on karo, browser settings mein site ko Location -> Allow do.
 
-6) DELIVERY AREA (5 km)
-  shared/config.js -> area.zones. Abhi Shrinath Medicity Hospital, Bareilly (28.3745, 79.4543) ke 5 km.
-  radiusKm badlo, ya Google Maps pe right-click karke nayi lat,lng daalo, ya zones mein aur jagah jodo.
-  area.enabled:false = area check band. area.requireLocation:false = bina location order allow.
-  Server bhi har order mein dobara check karta hai.
+6) CONSOLE / "window" MEIN KYA DIKHTA HAI
+  Production mein console khaali hai (sirf "Ruko!" chetavni). window.FRESHERS jaisa kuch nahi (app React modules mein hai), React DevTools band.
+  Sach: Network tab / View Source har browser mein hota hai, chhupaya nahi ja sakta. Isliye browser ko koi secret bheji hi nahi jaati:
+    Telegram token -> sirf Vercel env | Coupons -> api/_private.js (server) | Daam/area/phone -> public (customer ko dikhane ke hi hain)
+  Server har order dobara check karta hai (daam, coupon, area, naam, phone); dusri site se order block; CSP headers laga hai.
 
-7) LOCAL MEIN CHALANA
-    npm install
-    npm run dev          (sirf design; /api ke liye:  npx vercel dev)
-    npm run build        (dist folder banata hai)
+7) DELIVERY AREA
+  shared/config.js -> area.zones (abhi Shrinath Medicity Hospital, Bareilly 28.3745, 79.4543, 5 km). radiusKm badlo / aur jagah jodo.
+  Jis Medicity ka matlab alag ho to Google Maps pe right-click -> lat,lng copy karke daalo.
 
-8) SECURITY (console / window / View Source)
-  Browser ko jo bhi jaata hai (JS, config) use koi bhi dekh sakta hai — har website ke saath aisa hota hai. Isliye browser wali files mein koi secret nahi:
-    Telegram token/chat id -> sirf Vercel env; Coupon -> api/_private.js (server-only); Daam/area/phone -> public (customer ko dikhane ke hi hain).
-  App ab React modules mein hai, "window.FRESHERS" jaisa kuch global nahi. Console mein "Ruko!" chetavni dikhti hai.
-  Server har order dobara check karta hai (daam, coupon, area, naam, phone). Dusri site se order bhejna block hai. CSP headers laga hai (vercel.json).
-  Limit: koi chahe to apne phone ki fake location bhej sakta hai — Telegram message mein doori + accuracy dikhti hai, delivery pe pata/phone dekh lena.
+8) LOCAL MEIN CHALANA
+  npm install | npm run dev (sirf design; /api ke liye: npx vercel dev) | npm run build | npm test
 
-9) TEST
-  Site kholo -> location allow -> header mein area dikhe -> ek order do -> Telegram pe message + map pin aaye.
-  Nahi aaya? Vercel -> Project -> Logs dekho; token/chat id dobara check karo (aur Redeploy).
+9) TEST (deploy ke baad)
+  Site kholo -> location allow -> header mein area dikhe -> ek order do -> Telegram pe message + map pin aaye. Nahi aaya? Vercel -> Logs.

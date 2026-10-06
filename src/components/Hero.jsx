@@ -11,6 +11,8 @@ import { shareSite } from "../lib/share.js";
 import { cx, onColor, rupee, scrollToId } from "../lib/utils.js";
 
 export const AVAIL = (() => { const a = C.juices.filter((j) => j.available !== false); return a.length ? a : C.juices; })();
+const [HL1, ...HR] = C.brand.tagline.replace(/\.$/, "").split(" ");
+const HL2 = HR.join(" ") + ".";
 const phoneShow = C.contact.phone.replace(/^(\d{5})(\d+)$/, "$1 $2");
 
 function OpenChip() {
@@ -59,8 +61,8 @@ export default function Hero() {
       </div>
 
       <div className="hero-main">
-        <p className="hook">{C.brand.hook}</p>
-        <h1 className="disp"><span>Fresh</span><span>in 20.</span></h1>
+        <p className="hook"><span>{C.brand.hook}</span></p>
+        <h1 className="disp"><span>{HL1}</span><span>{HL2}</span></h1>
         <div className="hero-copy">
           <p>{C.brand.intro}</p>
           <div className="chips"><OpenChip /></div>

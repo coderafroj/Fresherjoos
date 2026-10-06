@@ -37,8 +37,9 @@ button.pill{cursor:pointer}
 .word img{width:2.7rem;height:2.7rem;border-radius:50%;flex:none}
 .topR{display:flex;gap:.5rem;align-items:center}
 .hero-main{position:relative;z-index:2;flex:1;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));grid-template-rows:auto auto auto 1fr;align-content:center;margin-top:1.2rem;column-gap:0}
-.hook{grid-column:1/8;grid-row:1;font:700 clamp(1.15rem,2.1vw,1.7rem)/1.15 var(--display);letter-spacing:-.02em;font-variation-settings:"wdth" 88;margin-bottom:.9rem;max-width:26rem}
-.hero h1{grid-column:1/9;grid-row:2;font-size:clamp(5rem,min(17.5vw,28vh),16rem);line-height:.8;letter-spacing:-.05em}
+.hook{grid-column:1/8;grid-row:1;font:700 clamp(1.1rem,2vw,1.6rem)/1.15 var(--display);letter-spacing:-.02em;font-variation-settings:"wdth" 88;margin-bottom:1rem;max-width:30rem}
+.hook span{display:inline-block;padding:.28rem .8rem;border-radius:999px;background:color-mix(in srgb,var(--hfg) 12%,transparent)}
+.hero h1{grid-column:1/9;grid-row:2;font-size:clamp(3.6rem,min(10.6vw,22vh),10.5rem);line-height:.84;letter-spacing:-.045em}
 .hero h1 span{display:block}
 .hero-copy{grid-column:1/6;grid-row:3;margin-top:1.8rem;max-width:30rem;position:relative;z-index:4;display:grid;gap:1.1rem}
 .hero-copy p{font-size:clamp(1.02rem,1.4vw,1.25rem);font-weight:500}
@@ -280,7 +281,7 @@ dialog.sheet[open]{animation:up .35s cubic-bezier(.2,.8,.2,1)}
   .hero{padding-bottom:6rem}
   .hero-main{display:flex;flex-direction:column;align-items:flex-start;margin-top:.8rem}
   .hook{order:1;margin-bottom:.6rem;max-width:100%}
-  .hero h1{order:2;font-size:clamp(4.6rem,25vw,9rem)}
+  .hero h1{order:2;font-size:clamp(3.4rem,17.6vw,8rem)}
   .glass-wrap{order:3;align-self:center;height:min(46svh,400px);margin:1.6rem 0 .4rem}
   .badge{left:-34%;width:44%}.fs1{left:-24%}.fs3{left:-30%}.fs2{right:-20%}
   .pick{order:4;align-self:center}
@@ -335,3 +336,55 @@ dialog.sheet[open]{animation:up .35s cubic-bezier(.2,.8,.2,1)}
   .hero-top{row-gap:.55rem}
   .glass-wrap{align-self:center}
 }
+
+/* ---------- v3: location detail, reveal, polish ---------- */
+.lsheet{width:min(560px,100%)}
+.lbody{display:grid;gap:1rem}
+.lhead h3{font:800 2.1rem/1 var(--display);letter-spacing:-.03em;font-variation-settings:"wdth" 82}
+.lhead p{margin-top:.4rem;opacity:.85}
+.lbanner{display:grid;gap:.15rem;padding:.9rem 1.1rem;border-radius:18px;background:#fff;border:2px solid var(--leaf)}
+.lbanner.ok{background:#EAF7EE;border-color:#17703d}.lbanner.bad{background:#FDECEF;border-color:var(--berry)}
+.lbanner b{font-size:1.05rem}.lbanner span{font-size:.93rem}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:.7rem}
+.tile{background:#fff;border-radius:18px;padding:.8rem 1rem;display:grid;gap:.1rem;border:1.5px solid rgba(14,59,42,.15)}
+.tile.wide{grid-column:1/-1}
+.tile .k{font-size:.78rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;opacity:.65}
+.tile .v{font:800 1.5rem/1.1 var(--display);letter-spacing:-.02em}
+.tile .s{font-size:.82rem;opacity:.7}
+.acc{display:grid;gap:.45rem}
+.accTop{display:flex;justify-content:space-between;gap:1rem;font-size:.92rem;flex-wrap:wrap}
+.bar{height:.7rem;border-radius:99px;background:rgba(14,59,42,.12);overflow:hidden}
+.bar i{display:block;height:100%;border-radius:99px;transition:width .8s cubic-bezier(.2,.8,.2,1);background:#17703d}
+.bar i.lv1{background:var(--berry)}.bar i.lv2{background:#E08A00}.bar i.lv3{background:#5FA83B}
+.acc .s{font-size:.82rem;opacity:.7}
+.radar.small{width:min(100%,260px);justify-self:center}
+.lrow{display:flex;gap:.6rem;flex-wrap:wrap}.lrow .btn{flex:1;min-width:9rem}
+
+.reveal{position:fixed;z-index:70;right:max(12px,env(safe-area-inset-right));top:max(70px,calc(env(safe-area-inset-top) + 62px));width:min(340px,calc(100vw - 24px));background:var(--paper);color:var(--leaf);border-radius:24px;padding:1.1rem 1.2rem;display:grid;gap:.4rem;box-shadow:0 22px 50px rgba(0,0,0,.35);animation:revealIn .6s cubic-bezier(.2,.9,.25,1.2)}
+@keyframes revealIn{from{transform:translateY(-24px) scale(.94);opacity:0}}
+.reveal .ok{display:flex;gap:.4rem;align-items:center;font-weight:700;font-size:.85rem;color:#17703d}.reveal .ok svg{width:1rem;height:1rem}
+.reveal b{font:800 1.35rem/1.1 var(--display);letter-spacing:-.02em;padding-right:1.6rem}
+.reveal .rs{font-size:.9rem;opacity:.8}
+.rbadge{justify-self:start;margin-top:.2rem;padding:.25rem .8rem;border-radius:99px;font-weight:700;font-size:.85rem}
+.rbadge.ok{background:var(--lime);color:var(--leaf)}.rbadge.bad{background:var(--berry);color:#fff}
+.rlink{justify-self:start;background:none;border:0;font-weight:700;text-decoration:underline;padding:.3rem 0}
+.rx{position:absolute;top:.5rem;right:.6rem;width:2.4rem;height:2.4rem;border:0;background:none;font-size:1.5rem}
+.offline{position:fixed;z-index:95;left:0;right:0;top:0;padding:.55rem 1rem;background:var(--berry);color:#fff;text-align:center;font-weight:700;font-size:.9rem}
+.linkbtn{background:none;border:0;text-decoration:underline;font-size:.88rem;opacity:.7;padding:.5rem;min-height:2.6rem}
+
+/* hero ki entry animation (sirf pehli baar) */
+@media (prefers-reduced-motion:no-preference){
+  .hook,.hero h1 span,.hero-copy>*,.pick{animation:enter .8s cubic-bezier(.2,.8,.2,1) both}
+  .hero h1 span:nth-child(1){animation-delay:.08s}.hero h1 span:nth-child(2){animation-delay:.18s}
+  .hero-copy>*:nth-child(1){animation-delay:.3s}.hero-copy>*:nth-child(2){animation-delay:.38s}.hero-copy>*:nth-child(3){animation-delay:.46s}
+  @keyframes enter{from{opacity:0;transform:translateY(22px)}}
+  .btn{transition:transform .2s,box-shadow .2s,background-color .2s,color .2s}
+  .btn.solid:hover{box-shadow:0 10px 24px rgba(14,59,42,.28)}
+}
+.btn:active{transform:scale(.97)}
+.hero::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:.07;mix-blend-mode:multiply;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+.locFloat .pill{max-width:min(78vw,420px)}
+@media (max-width:860px){ .reveal{top:auto;bottom:calc(5.4rem + env(safe-area-inset-bottom));right:50%;translate:50% 0} .tiles{grid-template-columns:1fr 1fr} .lrow .btn{min-width:7rem} }
+
+.pill .dst{flex:none;opacity:.9}
+@media (max-width:480px){.pill .dst{display:none}.locFloat .pill .dst{display:inline}}

@@ -6,6 +6,9 @@ import Dock from "./components/Dock.jsx";
 import Toaster from "./components/Toaster.jsx";
 import { Sprites } from "./components/Icons.jsx";
 import { FloatLoc, LocBanner } from "./components/LocPill.jsx";
+import LocSheet, { LocReveal } from "./components/LocSheet.jsx";
+import ErrorBoundary from "./components/ErrorBoundary.jsx";
+import { useOnline } from "./lib/hooks.js";
 import { Area, Faq, Hygiene, Marquee, OrderCta, Places, Race } from "./components/Sections.jsx";
 import { location } from "./lib/location.js";
 import { ui } from "./lib/ui.js";
@@ -17,6 +20,7 @@ const OrderSheet = lazy(loadSheet);
 
 export default function App() {
   const open = useStore(ui, (s) => s.sheet);
+  const online = useOnline();
   const [warm, setWarm] = useState(false);
 
   useEffect(() => {
@@ -37,18 +41,18 @@ export default function App() {
   return (
     <>
       <Sprites />
-      <Hero />
+      {!online && <div className="offline" role="status">Net nahi hai. Order ke liye net chahiye, ya call karo.</div>}
+      <ErrorBoundary><Hero /></ErrorBoundary>
       <Marquee />
-      <Menu />
+      <ErrorBoundary><Menu /></ErrorBoundary>
       <Race />
       <Places />
-      <Area />
+      <ErrorBoundary><Area /></ErrorBoundary>
       <Hygiene />
       <Faq />
       <OrderCta />
       <Dock />
-      <FloatLoc />
-      <LocBanner />
+      <ErrorBoundary silent><FloatLoc /><LocBanner /><LocReveal /><LocSheet /></ErrorBoundary>
       <Toaster />
       {(warm || open) && <Suspense fallback={null}><OrderSheet /></Suspense>}
     </>
